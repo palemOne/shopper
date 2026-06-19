@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopping List Form</title>
+<style>
+  :root{ --bg:#0d1117; --bg2:#161b24; --card:#1b222e; --ink:#f4f7fb; --muted:#aab6c6;
+    --line:#2c3543; --accent:#4f8cff; --accent-d:#3b74e6; --ok:#34d27b; --danger:#ff6b60; }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#0d1117 0%,#10182a 100%);
+    background-attachment:fixed;color:var(--ink);
+    font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.45}
+  .wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+  header h1{margin:0 0 6px;font-size:30px;font-weight:800;letter-spacing:-.01em;
+    color:#fff;text-shadow:0 2px 14px rgba(79,140,255,.35)}
+  header p{margin:0 0 18px;color:var(--muted);font-size:15px}
+  header p strong{color:#fff}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:16px;margin-bottom:16px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+  label{display:block;font-size:12px;font-weight:700;color:#9fd0ff;
+    text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+  input,select,textarea{width:100%;padding:10px 11px;border:1px solid var(--line);
+    border-radius:8px;font-size:15px;font-weight:500;font-family:inherit;
+    background:#0f151f;color:#fff}
+  input::placeholder{color:#6c7a8c}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(79,140,255,.28)}
+  .who{display:flex;gap:12px;flex-wrap:wrap}
+  .who>div{flex:1;min-width:180px}
+  .item{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;
+    background:var(--bg2);position:relative}
+  .grid{display:grid;grid-template-columns:1.1fr 2fr .7fr;gap:10px}
+  .grid2{display:grid;grid-template-columns:2.4fr .8fr;gap:10px;margin-top:10px}
+  .rm{position:absolute;top:8px;right:8px;border:none;background:transparent;
+    color:var(--danger);font-size:18px;cursor:pointer;line-height:1;padding:4px}
+  .num{font-size:12px;color:#7fb4ff;font-weight:800;letter-spacing:.08em;margin-bottom:8px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:9px;
+    padding:12px 18px;font-size:16px;font-weight:700;cursor:pointer}
+  .btn-add{background:rgba(79,140,255,.14);color:#9fd0ff;border:1px solid rgba(79,140,255,.4);
+    width:100%;justify-content:center}
+  .btn-add:hover{background:rgba(79,140,255,.22)}
+  .btn-go{background:linear-gradient(180deg,#5a93ff,#3b74e6);color:#fff;
+    box-shadow:0 4px 16px rgba(79,140,255,.4)}
+  .btn-go:hover{background:linear-gradient(180deg,#4f8cff,#2f63d6)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .hint{font-size:13px;color:var(--muted);margin-top:6px}
+  .hint strong{color:#cfe1ff}
+  .saved{color:var(--ok);font-size:13px;font-weight:700;opacity:0;transition:opacity .3s}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🛒 Weekly Shopping List</h1>
+    <p>Add anything you need below, then tap <strong>Download my list</strong> and send the file back to Simon. He'll add it to the order.</p>
+  </header>
+
+  <div class="card">
+    <div class="who">
+      <div>
+        <label for="name">Your name</label>
+        <input id="name" placeholder="e.g. Maria">
+      </div>
+      <div>
+        <label for="week">For which week / date</label>
+        <input id="week" placeholder="e.g. June 20">
+      </div>
+    </div>
+  </div>
+
+  <div id="items"></div>
+
+  <button class="btn btn-add" onclick="addItem()">＋ Add another item</button>
+
+  <div class="card" style="margin-top:16px">
+    <div class="actions">
+      <button class="btn btn-go" onclick="download()">⬇ Download my list</button>
+      <span id="saved" class="saved">Saved ✓</span>
+    </div>
+    <p class="hint">Downloads a small <strong>.csv</strong> file (opens in Excel, Numbers, or Google Sheets). Email or message that file back to Simon. Your entries auto-save on this device, so you won't lose them if you close the page.</p>
+  </div>
+</div>
+
+<script>
+  const RETAILERS = ["Amazon","Walmart","Costco","No preference"];
+  const itemsEl = document.getElementById("items");
+
+  function rowHTML(d={}){
+    const opts = RETAILERS.map(r=>`<option ${d.retailer===r?"selected":""}>${r}</option>`).join("");
+    return `
+      <div class="item">
+        <button class="rm" title="Remove" onclick="this.parentNode.remove();save()">✕</button>
+        <div class="num">ITEM</div>
+        <div class="grid">
+          <div><label>Store</label><select onchange="save()">${opts}</select></div>
+          <div><label>Item</label><input placeholder="e.g. 2% milk, paper towels" value="${esc(d.item)}" oninput="save()"></div>
+          <div><label>Qty</label><input placeholder="1" value="${esc(d.qty)}" oninput="save()"></div>
+        </div>
+        <div class="grid2">
+          <div><label>Brand / notes (optional)</label><input placeholder="e.g. cheapest is fine, or 'brand: Kirkland'" value="${esc(d.notes)}" oninput="save()"></div>
+          <div><label>Max price $ (optional)</label><input placeholder="e.g. 20" value="${esc(d.cap)}" oninput="save()"></div>
+        </div>
+      </div>`;
+  }
+  function esc(v){return v==null?"":String(v).replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+
+  function addItem(d){ itemsEl.insertAdjacentHTML("beforeend", rowHTML(d||{})); }
+
+  function readRows(){
+    return [...itemsEl.querySelectorAll(".item")].map(it=>{
+      const sel=it.querySelector("select"), ins=it.querySelectorAll("input");
+      return {retailer:sel.value, item:ins[0].value.trim(), qty:ins[1].value.trim(),
+              notes:ins[2].value.trim(), cap:ins[3].value.trim()};
+    });
+  }
+
+  function save(){
+    try{
+      localStorage.setItem("shoplist", JSON.stringify({
+        name:document.getElementById("name").value,
+        week:document.getElementById("week").value,
+        rows:readRows()
+      }));
+      const s=document.getElementById("saved"); s.style.opacity=1;
+      clearTimeout(window._st); window._st=setTimeout(()=>s.style.opacity=0,900);
+    }catch(e){}
+  }
+  document.getElementById("name").addEventListener("input",save);
+  document.getElementById("week").addEventListener("input",save);
+
+  function csvCell(v){
+    v=v==null?"":String(v);
+    if(/^[=+\-@\t\r]/.test(v)) v="'"+v; // neutralize spreadsheet formula injection
+    return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+  }
+
+  function download(){
+    const name=document.getElementById("name").value.trim()||"someone";
+    const week=document.getElementById("week").value.trim();
+    const rows=readRows().filter(r=>r.item);
+    if(!rows.length){ alert("Add at least one item first 🙂"); return; }
+    let csv="Store,Item,Quantity,Brand/Notes,Max Price ($),Submitted By,Week\n";
+    rows.forEach(r=>{ csv+=[r.retailer,r.item,r.qty,r.notes,r.cap,name,week].map(csvCell).join(",")+"\n"; });
+    const safe=(name+"_"+(week||new Date().toISOString().slice(0,10))).replace(/[^a-z0-9_-]+/gi,"-");
+    const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download="shopping-list_"+safe+".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
+  // restore or seed
+  (function init(){
+    let saved=null; try{ saved=JSON.parse(localStorage.getItem("shoplist")); }catch(e){}
+    if(saved && saved.rows && saved.rows.length){
+      document.getElementById("name").value=saved.name||"";
+      document.getElementById("week").value=saved.week||"";
+      saved.rows.forEach(addItem);
+    } else { addItem(); addItem(); addItem(); }
+  })();
+</script>
+</body>
+</html>
